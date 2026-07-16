@@ -1,0 +1,183 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+This is the GSLab Python library repository combined with a template for reproducible research projects. The repository has two main components:
+
+- **`gslab_python/`** — The GSLab Python library (packages for reproducible research workflows)
+- **`template/`** — A sample GSLab project demonstrating the build system and directory structure
+
+## Quick Commands
+
+### Testing the gslab_python library
+
+```bash
+# Run all tests with coverage report
+cd gslab_python
+python setup.py test
+
+# Run tests with coverage for specific files
+cd gslab_python
+python setup.py test --include=gslab_scons/*
+```
+
+### Building the template project
+
+```bash
+# Build analysis pipeline
+cd template/analysis
+python run.py
+
+# Build paper/slides
+cd template/paper_slides
+python run.py
+
+# Build specific target
+cd template/analysis
+python run.py build/path/to/file.txt
+
+# Build with SCons caching (faster subsequent runs)
+python run.py mode=cache
+```
+
+### Setting up the template
+
+```bash
+# Install dependencies
+cd template
+pip install -r config/requirements.txt
+
+# Unzip SCons (one-time setup)
+cd template/config
+unzip scons.zip -d scons  # Manual step on Windows
+```
+
+## Repository Structure
+
+### gslab_python/
+
+Core library packages providing builders and utilities for SCons-based research workflows:
+
+- **`gslab_make/`** — File management utilities (`make_links.py`, `make_log.py`) and external dependency tools
+- **`gslab_fill/`** — Template filling for text and table files (`textfill.py`, `tablefill.py`)
+- **`gslab_scons/`** — SCons integration:
+  - `builders/` — Custom builders for Python, R, Stata, MATLAB, LyX, LaTeX, and shell commands
+  - `release.py` — Release automation to GitHub and local destinations
+  - `log.py`, `check_prereq.py` — Logging and prerequisite checking
+- **`gslab_misc/`** — Miscellaneous utilities including `gencat` (concatenation tools) and `SaveData` modules
+
+Testing uses `coverage` for unit tests. All packages define tests in subdirectories.
+
+### template/
+
+A minimal working example of a GSLab research project showing the recommended structure:
+
+- **`analysis/`** — Data processing and statistical analysis
+  - `source/` — Scripts (Python, R, Stata, MATLAB)
+  - `build/` — Build artifacts (generated)
+  - `release/` — Final outputs intended for release
+  - `SConstruct` — Build definition
+  - `run.py` — Wrapper around SCons
+  
+- **`paper_slides/`** — Paper and presentation generation (same structure as `analysis/`)
+  
+- **`config/`** — Shared configuration
+  - `config_global.yaml` — Versioned config (gslab_python version, paths)
+  - `config_user.yaml` — Local unversioned config (executables, cache paths) — auto-generated
+  - `scons/` — Packaged SCons (scons-local-3.0.1)
+  - `requirements.txt` — Python dependencies
+  - `config_r.r`, `config_stata.do` — Language-specific setup
+
+## Build System Architecture
+
+### SCons Integration (gslab_scons)
+
+The core build system uses SCons with custom builders. Understanding the flow:
+
+1. **`run.py`** in analysis/ or paper_slides/ calls `config/scons/scons.py` (SCons Local)
+2. **SConstruct** in each subdirectory defines the build environment and includes language-specific builders
+3. **SConscript** files in each source/ subdirectory define build rules for individual targets
+4. **Builders** (in gslab_scons/builders/) execute scripts and track dependencies
+5. **Logging** — Each builder produces a log; all are merged to `release/sconstruct.log`
+6. **MD5-timestamp decider** — Rebuilds only when content changes, not timestamps
+
+### Supported Languages
+
+Each builder is optional (uncomment in SConstruct to enable):
+- Python via `BuildPython`
+- R via `BuildR`
+- Stata via `BuildStata`
+- MATLAB via `BuildMatlab`
+- LyX → PDF via `BuildLyx` (paper_slides)
+- LaTeX → PDF via `BuildLatex`
+- Arbitrary shell commands via "Anything builder"
+
+### Configuration System
+
+Two YAML files control the build:
+
+- **`config_global.yaml`** (versioned) — gslab_python version, source/build paths, input directories to monitor, prerequisite checks
+- **`config_user.yaml`** (local, unversioned) — Executable paths (python_executable, r_executable, stata_executable, latex_executable), SCons cache directory, release directory
+
+If `config_user.yaml` is missing, SCons will copy from template on first run.
+
+## Key Architecture Patterns
+
+### Dependency coupling (analysis → paper_slides)
+
+By design, `analysis/` and `paper_slides/` are decoupled. To use analysis outputs as paper inputs:
+
+1. Manually copy desired files from `analysis/release/` to `paper_slides/input/`
+2. This allows coauthors to build papers without re-running expensive analysis
+
+Lighter alternatives (not recommended):
+- Symlinks between `analysis/release` and `paper_slides/input` (not portable)
+- Point to `analysis/release` in `paper_slides/config_global.yaml` (hard to parse in LyX/LaTeX)
+
+### Large files
+
+- **Versioned:** Track with git-lfs (add to `.gitattributes`, list under `look_in` in config_global.yaml)
+- **Unversioned in release:** Store in `release/lg/` (in .gitignore by default); included in local releases but not GitHub
+
+### Logging and diagnostics
+
+- **Build logs:** `release/sconstruct.log` concatenates all builder logs
+- **Repository state:** `release/state_of_repo.log` tracks file sizes and git-lfs usage
+- **Input monitoring:** `release/state_of_input.log` records contents of directories listed under `input` key
+
+## Testing and Quality
+
+### gslab_python testing
+
+```bash
+cd gslab_python
+# Run all tests
+python setup.py test
+
+# Coverage report omits setup.py and __init__.py
+# Output written to test.log
+```
+
+The `TestRepo` build command in setup.py runs `coverage run` with branch coverage enabled, then generates a report.
+
+### Troubleshooting
+
+**`config_user.yaml` not found** — SCons will auto-generate from template on first run.
+
+**Executable not found** — Check:
+1. Executable is installed and in PATH
+2. Listed in `config_user.yaml` under `executable_names` (only if not in PATH)
+3. `prereq_checks` enabled in config_global.yaml
+
+**SCons cache stale** — Different SCons versions (≥ 2.5.0) have different cache formats. Delete cache directory and rebuild.
+
+**Build fails with dependency issues** — Run with `python run.py --debug` for full traceback. Verify all source files exist and SConscript rules are correct.
+
+## References
+
+- [gslab_python GitHub](https://github.com/gslab-econ/gslab_python)
+- [SCons documentation](http://scons.org/)
+- [GSLab RA Manual](https://github.com/gslab-econ/ra-manual/wiki)
+- [Original template repository](https://github.com/gslab-econ/template)

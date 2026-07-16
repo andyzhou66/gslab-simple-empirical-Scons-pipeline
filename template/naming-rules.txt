@@ -1,0 +1,12 @@
+Note:
+	Use - and _ to seperate each word instead of a space so that we can use program to process those files more easily
+
+Literature:
+	Authors+Abbrevation of journal name+Publication Year+Short Title ( if the original title is too long, generate a short one)
+	e.g. Bills-et-al_CAR-2015 _Growing-Pains-Audit-Quality-and-Office-Growth
+
+Word file: 
+	The word file name should contain enough information so that we can keep track of the progress of writing.
+	The word file name: date when the file is prepared+author+title 
+	e.g.  2023-7-8_Yu_Research-Design 
+	
