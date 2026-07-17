@@ -214,33 +214,36 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
 
 Each step's **SConscript** uses `env.Install()` to explicitly copy its outputs to the next step's `input-data/` directory. This makes the pipeline dependency graph transparent to SCons.
 
-**Critical: Working Directory in SCons Commands**
+**🚨 CRITICAL: Working Directory in env.Command()**
 
-When `env.Command()` executes a script, it runs from the **step directory** (where SConscript is), NOT from `code/`. All relative paths in Python/Stata scripts must be relative to the step directory:
+When SCons executes `env.Command()`, **the action runs from the ROOT directory** (simple-empirical-Scons-demo/), NOT from the step directory.
 
-**Correct paths (relative to step directory):**
-- `output/data.csv` ✓
-- `input-data/data.csv` ✓
-- `raw-data/data.csv` ✓ (step 1)
-- `../.env` ✓ (one level up to project root)
+```python
+# In 1.import-data/SConscript
+cmd = env.Command(
+    target='raw-data/data.csv',
+    source='code/import_data.py',
+    action='python $SOURCE'  # Working directory: simple-empirical-Scons-demo/
+)
+```
 
-**Wrong paths (relative to code/ subdirectory):**
-- `../output/data.csv` ✗
-- `../input-data/data.csv` ✗
-- `../raw-data/data.csv` ✗
-- `../../.env` ✗
+**All relative paths in Python/Stata scripts must be relative to ROOT:**
+- `1.import-data/raw-data/data.csv` ✓ (NOT `raw-data/data.csv`)
+- `2.clean-data/input-data/data.csv` ✓ (NOT `input-data/data.csv`)
+- `3.regression-analysis/output/regression_results.txt` ✓ (NOT `output/regression_results.txt`)
+- `.env` ✓ (NOT `../.env`)
 
 **Example from `1.import-data/SConscript`:**
 ```python
 # Build: execute import_data.py → output/data.csv
 cmd = env.Command(
-    target='output/data.csv',
+    target='raw-data/data.csv',
     source='code/import_data.py',
-    action='python $SOURCE > $TARGET'
+    action='python $SOURCE'
 )
 
 # Install: copy to next step's input
-env.Install('../2.clean-data/input-data', 'output/data.csv')
+env.Install('../2.clean-data/input-data', 'raw-data/data.csv')
 ```
 
 **Benefits:**

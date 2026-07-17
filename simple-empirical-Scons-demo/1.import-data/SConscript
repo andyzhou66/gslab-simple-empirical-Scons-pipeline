@@ -5,12 +5,12 @@ Import('env')
 # Build rule for step 1: import data
 # Script outputs directly to output/data.csv (no redirection needed)
 cmd = env.Command(
-    target='output/data.csv',
+    target='raw-data/data.csv',
     source='code/import_data.py',
     action='python $SOURCE'
 )
 
-env.Depends(cmd, 'raw-data')
+#env.Depends(cmd, 'raw-data')
 
 # Install output to next step's input
-env.Install('../2.clean-data/input-data', 'output/data.csv')
+env.Install('../2.clean-data/input-data', 'raw-data/data.csv')

@@ -8,7 +8,7 @@ Import('env')
 cmd = env.Command(
     target='output/clean_data.csv',
     source=['code/clean_data.py', 'input-data/data.csv'],
-    action='python code/clean_data.py'
+    action='python 2.clean-data/code/clean_data.py'
 )
 
 # Install output to next step's input
