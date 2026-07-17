@@ -114,6 +114,28 @@ cmd = env.Command(
 env.Install('../2.clean-data/input-data', 'output/data.csv')
 ```
 
+**Important: Working Directory in SCons Commands**
+
+When SCons executes `env.Command()`, scripts run from the **step directory** (where SConscript is located), NOT from the `code/` subdirectory. Therefore:
+
+| File Path | Working Directory | Correct Path |
+|-----------|-------------------|--------------|
+| `input-data/` | step dir | `input-data/` (NOT `../input-data/`) |
+| `output/` | step dir | `output/` (NOT `../output/`) |
+| `raw-data/` | step dir | `raw-data/` (NOT `../raw-data/`) |
+| `.env` | step dir | `../.env` (one level up to project root) |
+
+**Example in Python script (import_data.py):**
+```python
+# CORRECT: paths relative to step directory
+df.to_csv('output/data.csv', index=False)  # ✓
+load_dotenv(dotenv_path='../.env')         # ✓
+
+# WRONG: paths relative to code/ directory  
+df.to_csv('../output/data.csv', index=False)  # ✗
+load_dotenv(dotenv_path='../../.env')         # ✗
+```
+
 **Why this pattern?**
 
 1. **Explicit dependencies** — SCons automatically manages the build order and file transfers

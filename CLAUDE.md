@@ -214,6 +214,22 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
 
 Each step's **SConscript** uses `env.Install()` to explicitly copy its outputs to the next step's `input-data/` directory. This makes the pipeline dependency graph transparent to SCons.
 
+**Critical: Working Directory in SCons Commands**
+
+When `env.Command()` executes a script, it runs from the **step directory** (where SConscript is), NOT from `code/`. All relative paths in Python/Stata scripts must be relative to the step directory:
+
+**Correct paths (relative to step directory):**
+- `output/data.csv` ✓
+- `input-data/data.csv` ✓
+- `raw-data/data.csv` ✓ (step 1)
+- `../.env` ✓ (one level up to project root)
+
+**Wrong paths (relative to code/ subdirectory):**
+- `../output/data.csv` ✗
+- `../input-data/data.csv` ✗
+- `../raw-data/data.csv` ✗
+- `../../.env` ✗
+
 **Example from `1.import-data/SConscript`:**
 ```python
 # Build: execute import_data.py → output/data.csv
