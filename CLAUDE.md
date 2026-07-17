@@ -175,9 +175,28 @@ The `TestRepo` build command in setup.py runs `coverage run` with branch coverag
 
 **Build fails with dependency issues** — Run with `python run.py --debug` for full traceback. Verify all source files exist and SConscript rules are correct.
 
+## Fixing Bugs in gslab_python
+
+The `gslab_python/` directory is a git repo pointed at **your fork**:
+- Remote: `https://github.com/andyzhou66/gslab_python.git`
+- The template pulls from this fork via `template/config/requirements.txt`
+
+**Workflow for fixing bugs or issues:**
+
+1. Edit the relevant `.py` file(s) inside `gslab_python/` (e.g. `gslab_scons/builders/`, `gslab_fill/`, etc.)
+2. Commit and push to `andyzhou66/gslab_python` on GitHub
+3. Reinstall the updated package in the active venv:
+   ```bash
+   pip install --upgrade git+https://github.com/andyzhou66/gslab_python.git@master
+   ```
+4. Rebuild the template to verify the fix:
+   ```bash
+   cd template/analysis && python run.py
+   ```
+
 ## References
 
-- [gslab_python GitHub](https://github.com/gslab-econ/gslab_python)
+- [Your gslab_python fork](https://github.com/andyzhou66/gslab_python)
 - [SCons documentation](http://scons.org/)
 - [GSLab RA Manual](https://github.com/gslab-econ/ra-manual/wiki)
 - [Original template repository](https://github.com/gslab-econ/template)
