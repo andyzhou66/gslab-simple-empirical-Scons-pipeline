@@ -3,11 +3,12 @@ import os
 Import('env')
 
 # Build rule for step 2: clean data
-# Depends on output from step 1
+# Script outputs directly to output/clean_data.csv
+# Note: source has 2 files but action only uses the .py file (first source)
 cmd = env.Command(
     target='output/clean_data.csv',
     source=['code/clean_data.py', 'input-data/data.csv'],
-    action='python $SOURCES > $TARGET'
+    action='python code/clean_data.py'
 )
 
 # Install output to next step's input

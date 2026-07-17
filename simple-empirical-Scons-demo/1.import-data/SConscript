@@ -3,10 +3,11 @@ import os
 Import('env')
 
 # Build rule for step 1: import data
+# Script outputs directly to output/data.csv (no redirection needed)
 cmd = env.Command(
     target='output/data.csv',
     source='code/import_data.py',
-    action='python $SOURCE > $TARGET'
+    action='python $SOURCE'
 )
 
 env.Depends(cmd, 'raw-data')
