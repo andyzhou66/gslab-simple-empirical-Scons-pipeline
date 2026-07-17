@@ -1,5 +1,6 @@
-# Nested repo — managed separately
+# Nested repos — managed separately
 gslab_python/
+template/
 
 # Python virtualenv
 Include/
