@@ -172,6 +172,22 @@ This keeps the repository lean while preserving full version history for large f
 
 ## How to Build
 
+### Setup: Configure API Key
+
+Before building, set up your API key:
+
+```bash
+# Copy the template
+cp .env.example .env
+
+# Edit .env with your actual API key
+nano .env
+```
+
+The `.env` file is gitignored and will never be committed to GitHub.
+
+### Run the Pipeline
+
 ```bash
 cd simple-empirical-Scons-demo
 scons
@@ -186,5 +202,39 @@ StataSE-64 -e do path/to/script.do
 ```
 
 **Note:** The gslab_python builder specifies `/e do` for Windows, but StataNow19 requires `-e do` (hyphen, not forward slash).
+
+---
+
+## Sensitive Data Management
+
+### API Keys and Secrets
+
+Step 1 (`import_data.py`) loads API keys via `python-dotenv`:
+
+1. **`.env.example`** (committed) — Template showing required variables
+2. **`.env`** (gitignored) — Local file with your actual API key
+
+**Workflow:**
+```bash
+# Create your local .env from the template
+cp .env.example .env
+
+# Edit .env with your actual credentials
+nano .env
+```
+
+The `.env` file is in `.gitignore` and will never be pushed to GitHub.
+
+**In code:** API key is loaded at runtime:
+```python
+from dotenv import load_dotenv
+import os
+
+load_dotenv(dotenv_path='../../.env')
+API_KEY = os.getenv('API_KEY')
+
+if not API_KEY:
+    raise EnvironmentError("API_KEY not set. Copy .env.example to .env and fill in your key.")
+```
 
 ---
