@@ -1,0 +1,14 @@
+import os
+
+Import('env')
+
+# Build rule for step 2: clean data
+# Depends on output from step 1
+cmd = env.Command(
+    target='output/clean_data.csv',
+    source=['code/clean_data.py', 'input-data/data.csv'],
+    action='python $SOURCES > $TARGET'
+)
+
+# Install output to next step's input
+env.Install('../3.regression-analysis/input-data', 'output/clean_data.csv')

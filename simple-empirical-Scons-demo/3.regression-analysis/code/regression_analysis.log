@@ -1,0 +1,73 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       SE—Standard Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user network, expiring 10 Feb 2027
+Serial number: 401909358955
+  Licensed to: Yu Zhou
+               CHUK-SZ
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do regression_analysis.do 
+
+. * Step 3: Regression analysis
+. * Reads clean_data.csv and runs OLS regression
+. 
+. clear all
+
+. set more off
+
+. 
+. program main
+  1.         * Import cleaned data (relative to code/ → ../input-data/)
+.         import delimited ../input-data/clean_data.csv, clear
+  2. 
+.         * Run simple OLS regression: y = a + b*x
+.         regress y x
+  3. 
+.         * Display results to log
+.         eststo result1
+  4.         esttab result1 using ../output/regression_results.txt, replace ///
+>                 cells(b(star fmt(3)) se(par fmt(3))) ///
+>                 stats(N r2, fmt(0 3)) ///
+>                 label title("OLS Regression: y on x")
+  5. 
+. end
+
+. 
+. main
+(encoding automatically selected: ISO-8859-1)
+(3 vars, 100 obs)
+
+      Source |       SS           df       MS      Number of obs   =       100
+-------------+----------------------------------   F(1, 98)        =         .
+       Model |      119988         1      119988   Prob > F        =         .
+    Residual |           0        98           0   R-squared       =    1.0000
+-------------+----------------------------------   Adj R-squared   =    1.0000
+       Total |      119988        99        1212   Root MSE        =         0
+
+------------------------------------------------------------------------------
+           y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+           x |        2.4          .        .       .            .           .
+       _cons |         10          .        .       .            .           .
+------------------------------------------------------------------------------
+(output written to ../output/regression_results.txt)
+
+. 
+. 
+. 
+end of do-file

@@ -1,0 +1,11 @@
+import os
+
+Import('env')
+
+# Build rule for step 3: regression analysis (Stata)
+# StataSE-64 -e do syntax (not /e do)
+cmd = env.Command(
+    target='output/regression_results.txt',
+    source=['code/regression_analysis.do', 'input-data/clean_data.csv'],
+    action='StataSE-64 -e do $SOURCE'
+)

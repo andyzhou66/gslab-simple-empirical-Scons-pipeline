@@ -1,0 +1,14 @@
+import os
+import shutil
+
+# Build environment
+env = Environment()
+
+# Step 1: Import data
+SConscript('1.import-data/SConscript', exports='env')
+
+# Step 2: Clean data (depends on step 1)
+SConscript('2.clean-data/SConscript', exports='env')
+
+# Step 3: Regression analysis (depends on step 2)
+SConscript('3.regression-analysis/SConscript', exports='env')

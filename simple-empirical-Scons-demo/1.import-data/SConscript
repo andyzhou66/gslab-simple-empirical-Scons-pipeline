@@ -1,0 +1,15 @@
+import os
+
+Import('env')
+
+# Build rule for step 1: import data
+cmd = env.Command(
+    target='output/data.csv',
+    source='code/import_data.py',
+    action='python $SOURCE > $TARGET'
+)
+
+env.Depends(cmd, 'raw-data')
+
+# Install output to next step's input
+env.Install('../2.clean-data/input-data', 'output/data.csv')

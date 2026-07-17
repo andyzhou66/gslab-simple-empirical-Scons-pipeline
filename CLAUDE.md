@@ -194,6 +194,45 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
    cd template/analysis && python run.py
    ```
 
+## Environment Notes
+
+- **Venv location:** `.env/` (activate: `.env/Scripts/activate`). Root-level `Include/`, `Lib/`, `Scripts/` were removed.
+- **WebFetch:** Requires `"skipWebFetchPreflight": true` in `.claude/settings.local.json` — without it, fetches hang indefinitely on external URLs.
+- **Nested repos:** `gslab_python/` and `template/` are independent git repos, both gitignored from the main repo. Do not `git add` them.
+- **Stata:** StataNow19 installed at `/g/StataNow19/StataSE-64.exe`. Use `-e do` syntax (not `/e do`) for command-line execution. Example: `StataSE-64 -e do script.do`
+
+## Project Conventions (simple-empirical-Scons-demo)
+
+- Folders: hyphen-case (`import-data`); Files: underscore_case (`import_data.py`)
+- Step folders: numeric prefix + dot (`1.import-data/`, `2.clean-data/`, `3.regression-analysis/`)
+- Build system: plain SCons `Command()`, not `gslab_scons` builders
+- Each step folder contains: `SConscript`, `code/`, `temp/` (logs)
+- Step 1 (`1.import-data`): also has `raw-data/` (downloaded CSVs)
+- Steps 2–3: also have `input-data/` (copied from prior step) and `output/` (produced files)
+
+### SCons Pattern: `env.Install()` for Inter-Step Data Flows
+
+Each step's **SConscript** uses `env.Install()` to explicitly copy its outputs to the next step's `input-data/` directory. This makes the pipeline dependency graph transparent to SCons.
+
+**Example from `1.import-data/SConscript`:**
+```python
+# Build: execute import_data.py → output/data.csv
+cmd = env.Command(
+    target='output/data.csv',
+    source='code/import_data.py',
+    action='python $SOURCE > $TARGET'
+)
+
+# Install: copy to next step's input
+env.Install('../2.clean-data/input-data', 'output/data.csv')
+```
+
+**Benefits:**
+- SCons manages build order and file tracking automatically
+- Each step "owns" its output distribution (scalable to N steps)
+- No manual copying or pre-action hooks in the root SConstruct
+- Clear, verifiable data lineage in the code
+
 ## References
 
 - [Your gslab_python fork](https://github.com/andyzhou66/gslab_python)
