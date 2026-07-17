@@ -3,11 +3,7 @@ gslab_python/
 template/
 
 # Python virtualenv
-Include/
-Lib/
-Scripts/
-share/
-pyvenv.cfg
+.env/
 
 # Python cache
 __pycache__/
