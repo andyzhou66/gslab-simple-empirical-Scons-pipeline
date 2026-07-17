@@ -1,0 +1,24 @@
+# SCons
+*.sconsign.dblite
+*.pyc
+
+# Per-step directories that should NOT be tracked
+*/temp/
+*/input-data/
+*/output/
+
+# macOS
+*.DS_Store
+
+# Stata temporaries
+*.log
+
+# LaTeX
+*.aux
+*.fls
+*.lof
+*.lot
+*.nav
+*.snm
+*.toc
+*.out
