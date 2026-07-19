@@ -199,7 +199,7 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
 - **Venv location:** `.env/` (activate: `.env/Scripts/activate`). Root-level `Include/`, `Lib/`, `Scripts/` were removed.
 - **WebFetch:** Requires `"skipWebFetchPreflight": true` in `.claude/settings.local.json` — without it, fetches hang indefinitely on external URLs.
 - **Nested repos:** `gslab_python/` and `template/` are independent git repos, both gitignored from the main repo. Do not `git add` them.
-- **Stata:** StataNow19 installed at `/g/StataNow19/StataSE-64.exe`. Use `-e do` syntax (not `/e do`) for command-line execution. Example: `StataSE-64 -e do script.do`
+- **Stata:** StataNow19 installed at `/g/StataNow19/StataSE-64.exe`. Use `-e do` syntax (not `/e do`) for command-line execution. Example: `StataSE-64 -e do script.do`. When writing `.do` files, use `simple-empirical-Scons-demo/dotemplatedo.do` as template for consistent structure and metadata.
 - **Jupyter Notebooks:** Use `nbautoexport` to auto-export notebooks to Python `.py` files for cleaner git diffs and version control. Install: `pip install nbautoexport`. Configure in JupyterLab (Settings → Notebook → Auto Export) or via `.jupyterlab-settings/notebook.json`. Exported `.py` files track notebook logic while the `.ipynb` remains readable in Jupyter.
 
 ### Running Jupyter Notebook with Venv in VS Code

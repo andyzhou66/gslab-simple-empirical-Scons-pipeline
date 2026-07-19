@@ -292,6 +292,8 @@ StataSE-64 -e do path/to/script.do
 
 **Note:** The gslab_python builder specifies `/e do` for Windows, but StataNow19 requires `-e do` (hyphen, not forward slash).
 
+**Do-File Template:** When creating `.do` files, use `dotemplatedo.do` as a template for consistent structure, metadata headers, and section organization.
+
 ---
 
 ## Development Setup
