@@ -3,12 +3,19 @@ import os
 Import('env')
 
 # Build rule for step 2: clean data
-# Script outputs directly to output/clean_data.csv
-# Note: source has 2 files but action only uses the .py file (first source)
+# Action runs from the project ROOT, so paths are root-relative.
+# Source has 2 files but the action only runs the .py (hardcoded path, as
+# before) — input-data/data.csv is listed only so SCons tracks the dependency.
+#
+# Logging (mirrors gslab_scons/builders/gslab_builder.py):
+#   1. scons_log.py start  -> truncate log, write "created" timestamp
+#   2. python <script> >> LOG 2>&1  -> redirect stdout/stderr into the log
+#   3. scons_log.py end    -> append "completed" timestamp
+LOG = '2.clean-data/temp/Sconscript_clean_data.log'
 cmd = env.Command(
     target='output/clean_data.csv',
     source=['code/clean_data.py', 'input-data/data.csv'],
-    action='python 2.clean-data/code/clean_data.py'
+    action='python modules/scons_log.py start %s && python 2.clean-data/code/clean_data.py >> %s 2>&1 && python modules/scons_log.py end %s' % (LOG, LOG, LOG)
 )
 
 # Install output to next step's input

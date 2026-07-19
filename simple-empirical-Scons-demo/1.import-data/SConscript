@@ -3,11 +3,18 @@ import os
 Import('env')
 
 # Build rule for step 1: import data
-# Script outputs directly to output/data.csv (no redirection needed)
+# Action runs from the project ROOT (simple-empirical-Scons-demo/), so all
+# paths below are root-relative.
+#
+# Logging (mirrors gslab_scons/builders/gslab_builder.py):
+#   1. scons_log.py start  -> truncate log, write "created" timestamp
+#   2. python $SOURCE >> LOG 2>&1  -> redirect script stdout/stderr into the log
+#   3. scons_log.py end    -> append "completed" timestamp
+LOG = '1.import-data/temp/Sconscript_import_data.log'
 cmd = env.Command(
     target='raw-data/data.csv',
     source='code/import_data.py',
-    action='python $SOURCE'
+    action='python modules/scons_log.py start %s && python $SOURCE >> %s 2>&1 && python modules/scons_log.py end %s' % (LOG, LOG, LOG)
 )
 
 #env.Depends(cmd, 'raw-data')

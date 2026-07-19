@@ -44,6 +44,9 @@ Each pipeline step is a top-level folder prefixed by its execution order:
 simple-empirical-Scons-demo/
 ├── README.md
 ├── SConstruct                          ← top-level SCons entry point
+├── modules/
+│   └── scons_log.py                    ← logging helper (timestamps + Sconstruct.log merge)
+├── Sconstruct.log                      ← top-level build log (generated, gitignored)
 │
 ├── 1.import-data/
 │   ├── SConscript                      ← SCons rules for this step
@@ -182,6 +185,147 @@ df.to_csv(output_path, index=False)
 - More explicit — paths are clearly relative to the script location
 - Easier to test scripts independently outside of SCons
 - More portable if scripts are moved or reused elsewhere
+
+---
+
+## Logging
+
+The pipeline produces two layers of logs, mirroring the gslab_scons approach
+(`gslab_python/gslab_scons/builders/gslab_builder.py` for per-builder
+timestamps, and `gslab_python/gslab_scons/log.py` for the top-level build log):
+
+1. **Per-step logs** — one per SConscript, capturing that step's script output
+   with start/end timestamps.
+2. **Top-level `Sconstruct.log`** — records the overall SCons build process:
+   a "New build" start line, the merged per-step logs, and a "Build completed"
+   end line.
+
+### File naming and location
+
+| Log | Path | Produced by |
+|-----|------|-------------|
+| Step 1 | `1.import-data/temp/Sconscript_import_data.log` | SConscript action |
+| Step 2 | `2.clean-data/temp/Sconscript_clean_data.log` | SConscript action |
+| Step 3 | `3.regression-analysis/temp/Sconscript_regression_analysis.log` | Stata `log using` in the `.do` file |
+| Top-level | `Sconstruct.log` (project root) | `SConstruct` (parse time + `atexit`) |
+
+**Naming convention:** `Sconscript_<step_name>.log`, where `<step_name>` is the
+step folder's suffix with hyphens replaced by underscores
+(`import-data` → `import_data`). All step logs live in that step's `temp/`
+folder; the top-level log lives next to `SConstruct`.
+
+All logs are build artifacts — `*/temp/` and `*.log` are gitignored, so they
+are never committed.
+
+### Timestamp convention
+
+Every log uses the gslab `{YYYY-MM-DD HH:MM:SS}` timestamp format so that
+`Sconstruct.log`'s merge step can identify them uniformly, just as
+`gslab_scons/log.py` does:
+
+```
+*** Builder log created: {2026-07-19 17:29:03}
+<script output>
+*** Builder log completed: {2026-07-19 17:29:05}
+```
+
+### How Python steps log (shell redirection)
+
+Python steps redirect the script's stdout/stderr into the log with `>`/`>>`
+inside the `env.Command()` action, and bracket it with start/end timestamp
+calls to the `modules/scons_log.py` helper:
+
+```python
+# In 1.import-data/SConscript (action runs from project ROOT)
+LOG = '1.import-data/temp/Sconscript_import_data.log'
+cmd = env.Command(
+    target='raw-data/data.csv',
+    source='code/import_data.py',
+    action='python modules/scons_log.py start %s && '
+           'python $SOURCE >> %s 2>&1 && '
+           'python modules/scons_log.py end %s' % (LOG, LOG, LOG)
+)
+```
+
+- `scons_log.py start <log>` — truncates the log and writes the `created` line.
+- `python $SOURCE >> <log> 2>&1` — appends the script's stdout **and** stderr.
+- `scons_log.py end <log>` — appends the `completed` line.
+- `&&` chains the three so that if the script fails, the `completed` line is
+  skipped (a log with a `created` line but no `completed` line signals a
+  failed step). `&&`, `>>`, and `2>&1` are all supported by SCons's default
+  Windows shell (`cmd.exe`).
+
+> Note on timestamps: we deliberately use a Python helper (`datetime.now()`)
+> rather than shell `$(date ...)`. SCons on Windows executes actions via
+> `cmd.exe`, which does not support Bash command substitution.
+
+### How the Stata step logs (Stata's inherent `log` command)
+
+The Stata step uses Stata's own `log using` command inside the `.do` file —
+**no shell redirection**. Start/end timestamps are emitted with `display` so
+they appear in the captured log:
+
+```stata
+* Build a YYYY-MM-DD HH:MM:SS timestamp string (gslab convention)
+local _sd = date(c(current_date), "DMY")
+local _ts_start = string(year(`_sd'), "%04.0f") + "-" ///
+    + string(month(`_sd'), "%02.0f") + "-" ///
+    + string(day(`_sd'), "%02.0f") + " " + c(current_time)
+log using "3.regression-analysis/temp/Sconscript_regression_analysis.log", replace text
+display "*** Builder log created: {`_ts_start'}"
+
+* ...analysis...
+
+display "*** Builder log completed: {`_ts_end'}"
+log close
+```
+
+Stata runs from the project ROOT (inherited from the SCons action), so the
+`log using` path is root-relative. Stata also auto-creates a side-effect
+`regression_analysis.log` (from `-e do`) at the root — this is gitignored and
+harmless; the canonical log is the named `Sconscript_*.log`.
+
+### Top-level `Sconstruct.log`
+
+`SConstruct` records the overall build process, mirroring
+`gslab_scons/log.py`'s `start_log` / `end_log`:
+
+- **Parse time** — writes `*** New build: {time} ***` to `Sconstruct.log`
+  before any build action runs.
+- **`atexit` handler** — after the build completes, appends each step log
+  (separated by a header with the step-log path) and writes
+  `*** Build completed: {time} ***`.
+- **Dry-run guard** — when SCons is invoked with `-n` / `--dry-run` /
+  `--recon` / `--just-print`, no log is written (mirrors
+  `log.py`'s `is_scons_dry_run`).
+
+The helper is imported in-process at parse time. Because `scons_log.py` lives
+in `modules/` (not a package, not on `sys.path`), `SConstruct` prepends that
+folder to `sys.path` so the bare `import scons_log` resolves — this lets the
+start line be written at parse time and the end line via `atexit`, without
+spawning a subprocess. (The per-step SConscripts instead invoke it as a shell
+script: `python modules/scons_log.py ...`.)
+```python
+sys.path.insert(0, os.path.join(os.getcwd(), 'modules'))
+import scons_log
+scons_log.sconstruct_start(SCONSTRUCT_LOG)         # parse time
+atexit.register(lambda: scons_log.sconstruct_end(  # build end
+    SCONSTRUCT_LOG, STEP_LOGS))
+```
+
+### The `modules/scons_log.py` helper
+
+A small stdlib-only module providing four CLI subcommands:
+
+| Command | Purpose |
+|---------|---------|
+| `start <log>` | Truncate `<log>`, write `*** Builder log created: {time}` |
+| `end <log>` | Append `*** Builder log completed: {time}` |
+| `sconstruct_start <log>` | Truncate `<log>`, write `*** New build: {time} ***` |
+| `sconstruct_end <log> <step_log>...` | Merge step logs into `<log>`, then write `*** Build completed: {time} ***` |
+
+Invoke from the project root as `python modules/scons_log.py <command> ...`
+(SCons actions run from the root, so the relative path resolves correctly).
 
 ---
 

@@ -1,14 +1,61 @@
 import os
-import shutil
+import sys
+import atexit
 
 
 # Build environment - inherit system PATH for executables (python, stata, etc)
 env = Environment(ENV=os.environ.copy())
+
+# ===========================================================================
+# Top-level Sconstruct.log — records the overall SCons build process.
+# Mirrors gslab_python/gslab_scons/log.py:
+#   * start_log() writes a "New build" start line at the beginning of the run.
+#   * end_log() writes a "Build completed" line at the end and merges the
+#     per-step builder logs into the same file.
+#
+# Here the start line is written when SConstruct is parsed (before any build
+# action runs), and an atexit handler performs the merge + end line after the
+# build completes. The step logs are produced by each SConscript's action and
+# live in <step>/temp/Sconscript_<step_name>.log.
+# ===========================================================================
+SCONSTRUCT_LOG = 'Sconstruct.log'
+STEP_LOGS = [
+    '1.import-data/temp/Sconscript_import_data.log',
+    '2.clean-data/temp/Sconscript_clean_data.log',
+    '3.regression-analysis/temp/Sconscript_regression_analysis.log',
+]
+
+# Skip logging on dry runs (-n / --dry-run / --recon / --just-print), exactly
+# as gslab_scons/log.py does.
+DRY_RUN_FLAGS = {'-n', '--dry-run', '--recon', '--just-print'}
+IS_DRY_RUN = bool(DRY_RUN_FLAGS.intersection(sys.argv))
+
+if not IS_DRY_RUN:
+    # Begin the log (parse time).
+    #
+    # Why `import scons_log` and not `import modules.scons_log`?
+    # `scons_log.py` lives in the `modules/` folder, which is NOT a Python
+    # package (no __init__.py) and is not on sys.path. Rather than invoke it
+    # as a subprocess, we want to call its functions in-process here (parse-
+    # time start + atexit end). To do that we temporarily prepend `modules/`
+    # to sys.path so the bare module name resolves, then `import scons_log`.
+    # (The per-step SConscripts, by contrast, invoke it as a script via the
+    # shell action: `python modules/scons_log.py ...`.)
+    sys.path.insert(0, os.path.join(os.getcwd(), 'modules'))
+    import scons_log
+    scons_log.sconstruct_start(SCONSTRUCT_LOG)
+
+    def _finish_sconstruct_log():
+        # End the log: merge step logs + write completion line (build time).
+        scons_log.sconstruct_end(SCONSTRUCT_LOG, STEP_LOGS)
+
+    atexit.register(_finish_sconstruct_log)
+
 # Step 1: Import data
 SConscript('1.import-data/SConscript', exports='env')
 
-# # # Step 2: Clean data (depends on step 1)
-# SConscript('2.clean-data/SConscript', exports='env')
+# # Step 2: Clean data (depends on step 1)
+SConscript('2.clean-data/SConscript', exports='env')
 
-# # # Step 3: Regression analysis (depends on step 2)
-# SConscript('3.regression-analysis/SConscript', exports='env')
+# # Step 3: Regression analysis (depends on step 2)
+SConscript('3.regression-analysis/SConscript', exports='env')

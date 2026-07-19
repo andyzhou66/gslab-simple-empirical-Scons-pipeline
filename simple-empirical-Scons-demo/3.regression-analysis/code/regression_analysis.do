@@ -20,6 +20,19 @@ clear all
 set more off
 set scheme s2mono
 
+* ── Logging (mirrors gslab_scons/builders/gslab_builder.py) ────────────────
+* Use Stata's inherent log command. The log is written to this step's temp/
+* folder as Sconscript_regression_analysis.log, with start/end timestamps in
+* the gslab '{YYYY-MM-DD HH:MM:SS}' convention. Stata runs from the project
+* ROOT, so the path is root-relative.
+capture mkdir "3.regression-analysis/temp"
+local _sd = date(c(current_date), "DMY")
+local _ts_start = string(year(`_sd'), "%04.0f") + "-" ///
+    + string(month(`_sd'), "%02.0f") + "-" ///
+    + string(day(`_sd'), "%02.0f") + " " + c(current_time)
+log using "3.regression-analysis/temp/Sconscript_regression_analysis.log", replace text
+display "*** Builder log created: {`_ts_start'}"
+
 
 /*==================================================
               1: Load and prepare data
@@ -52,6 +65,15 @@ esttab result1 using 3.regression-analysis/output/regression_results.txt, replac
 
 * Save regression output dataset (relative to project root)
 save 3.regression-analysis/output/regression_output.dta, replace
+
+
+* ── Close log with completion timestamp (mirrors gslab_builder.timestamp_log) ─
+local _ed = date(c(current_date), "DMY")
+local _ts_end = string(year(`_ed'), "%04.0f") + "-" ///
+    + string(month(`_ed'), "%02.0f") + "-" ///
+    + string(day(`_ed'), "%02.0f") + " " + c(current_time)
+display "*** Builder log completed: {`_ts_end'}"
+log close
 
 
 exit
