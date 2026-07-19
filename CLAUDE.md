@@ -200,6 +200,7 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
 - **WebFetch:** Requires `"skipWebFetchPreflight": true` in `.claude/settings.local.json` — without it, fetches hang indefinitely on external URLs.
 - **Nested repos:** `gslab_python/` and `template/` are independent git repos, both gitignored from the main repo. Do not `git add` them.
 - **Stata:** StataNow19 installed at `/g/StataNow19/StataSE-64.exe`. Use `-e do` syntax (not `/e do`) for command-line execution. Example: `StataSE-64 -e do script.do`
+- **Jupyter Notebooks:** Use `nbautoexport` to auto-export notebooks to Python `.py` files for cleaner git diffs and version control. Install: `pip install nbautoexport`. Configure in JupyterLab (Settings → Notebook → Auto Export) or via `.jupyterlab-settings/notebook.json`. Exported `.py` files track notebook logic while the `.ipynb` remains readable in Jupyter.
 
 ## Project Conventions (simple-empirical-Scons-demo)
 
@@ -245,6 +246,27 @@ cmd = env.Command(
 # Install: copy to next step's input
 env.Install('../2.clean-data/input-data', 'raw-data/data.csv')
 ```
+
+**Alternative: Use `Path` and `__file__` for portable relative paths**
+
+Instead of hardcoding root-relative paths, you can resolve paths relative to the script's location using `__file__` and Python's `pathlib.Path`. This is more portable and doesn't depend on SCons working directory:
+
+```python
+# In 1.import-data/code/import_data.py
+from pathlib import Path
+
+script_dir = Path(__file__).resolve().parent          # .../1.import-data/code/
+root_dir = script_dir.parent.parent                  # .../simple-empirical-Scons-demo/
+output_path = root_dir / "1.import-data/raw-data/data.csv"
+
+df.to_csv(output_path, index=False)
+```
+
+**Benefits of this approach:**
+- Works regardless of SCons working directory
+- More explicit — intent is clear from the code
+- Easier to test scripts independently outside of SCons
+- More portable if scripts are moved to different locations
 
 **Benefits:**
 - SCons manages build order and file tracking automatically

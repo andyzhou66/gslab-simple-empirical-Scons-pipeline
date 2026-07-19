@@ -155,6 +155,34 @@ env.Install('../2.clean-data/input-data', 'raw-data/data.csv')
 3. Scalable — Adding steps only requires updating SConscript
 4. Verifiable — SCons tracks all dependencies
 
+**Alternative: Use `Path` and `__file__` for portable relative paths**
+
+Instead of relying on root-relative paths in scripts, you can resolve paths relative to the script's location using `__file__` and `pathlib.Path`. This approach is more portable and works regardless of SCons working directory:
+
+```python
+# In 1.import-data/code/import_data.py
+from pathlib import Path
+from dotenv import load_dotenv
+import pandas as pd
+
+script_dir = Path(__file__).resolve().parent          # .../1.import-data/code/
+root_dir = script_dir.parent.parent                  # .../simple-empirical-Scons-demo/
+
+# Load .env from root
+env_path = root_dir / ".env"
+load_dotenv(dotenv_path=env_path)
+
+# Save output to root-relative path
+output_path = root_dir / "1.import-data/raw-data/data.csv"
+df.to_csv(output_path, index=False)
+```
+
+**Benefits of this approach:**
+- Works regardless of SCons working directory
+- More explicit — paths are clearly relative to the script location
+- Easier to test scripts independently outside of SCons
+- More portable if scripts are moved or reused elsewhere
+
 ---
 
 ## Version Control (.gitignore and .gitattributes)
