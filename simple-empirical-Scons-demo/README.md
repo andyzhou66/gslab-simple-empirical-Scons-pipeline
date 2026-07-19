@@ -1,6 +1,6 @@
 # simple-empirical-Scons-demo
 
-A minimal SCons-based empirical research pipeline demonstrating a three-step workflow: data import, data cleaning, and regression analysis. Uses plain SCons `Command()` — no gslab_scons builders.
+A minimal SCons-based empirical research pipeline demonstrating a four-step workflow: data import, data cleaning, regression analysis, and LaTeX paper compilation. Uses plain SCons `Command()` — no gslab_scons builders.
 
 ---
 
@@ -34,7 +34,23 @@ Each pipeline step is a top-level folder prefixed by its execution order:
 1.import-data/
 2.clean-data/
 3.regression-analysis/
+4.build-paper-and-slides/
 ```
+
+### Step folders — start with a verb
+
+The name after the numeric prefix should begin with a **verb** describing
+the action performed by that step, followed by a noun or object:
+
+```
+good:  1.import-data          ← verb "import" + object "data"
+good:  2.clean-data           ← verb "clean" + object "data"
+good:  4.build-paper-and-slides  ← verb "build" + object "paper-and-slides"
+bad:   3.regression-analysis  ← "regression" is a noun, not a verb
+```
+
+The verb makes the step's role immediately clear: what does this step
+*do*? Import, clean, build, merge, plot, etc.
 
 ---
 
@@ -70,6 +86,15 @@ simple-empirical-Scons-demo/
     ├── input-data/                     ← copied from 2.clean-data/output/
     ├── output/                         ← regression_results.tex and tables land here
     └── temp/                           ← logs for this step
+
+└── 4.build-paper-and-slides/
+    ├── SConscript                      ← SCons rules for this step
+    ├── code/
+    │   ├── paper.tex                   ← LaTeX paper that \input{}s regression results
+    │   └── build_paper_and_slides.py   ← Python wrapper: 2-pass pdflatex compilation
+    ├── input-data/                     ← copied from 3.regression-analysis/output/
+    ├── output/                         ← paper.pdf and LaTeX auxiliary files land here
+    └── temp/                           ← logs for this step
 ```
 
 ---
@@ -81,8 +106,8 @@ simple-empirical-Scons-demo/
 | `code/` | Scripts executed by SCons | All steps |
 | `SConscript` | SCons build rules for this step | All steps |
 | `raw-data/` | Data downloaded from online source | Step 1 only |
-| `input-data/` | Input copied from previous step's output | Steps 2 & 3 |
-| `output/` | Processed/final data produced by this step | Steps 2 & 3 |
+| `input-data/` | Input copied from previous step's output | Steps 2, 3 & 4 |
+| `output/` | Processed/final data produced by this step | Steps 2, 3 & 4 |
 | `temp/` | Build logs for this step | All steps |
 
 ---
@@ -94,6 +119,7 @@ simple-empirical-Scons-demo/
 | 1 | `1.import-data` | Python | online source | `raw-data/*.csv` |
 | 2 | `2.clean-data` | Python | `input-data/` (from step 1 raw-data) | `output/*.csv` |
 | 3 | `3.regression-analysis` | Stata | `input-data/` (from step 2 output) | `output/regression_results.tex` |
+| 4 | `4.build-paper-and-slides` | LaTeX (Python wrapper) | `input-data/` (from step 3 output) + `code/paper.tex` | `output/paper.pdf` |
 
 ---
 
@@ -121,6 +147,7 @@ cmd = env.Command(
 | `1.import-data/code/import_data.py` | Root | `'1.import-data/raw-data/data.csv'`, `'.env'` |
 | `2.clean-data/code/clean_data.py` | Root | `'2.clean-data/input-data/data.csv'`, `'2.clean-data/output/clean_data.csv'` |
 | `3.regression-analysis/code/regression_analysis.do` | Root | `'3.regression-analysis/input-data/clean_data.csv'`, `'3.regression-analysis/output/regression_results.tex'` |
+| `4.build-paper-and-slides/code/build_paper_and_slides.py` | Step dir¹ | `'code/paper.tex'`, `'input-data/regression_results.tex'`, `'output/'` |
 
 **Code Examples:**
 ```python
@@ -131,6 +158,13 @@ load_dotenv(dotenv_path='.env')  # ✓ At root, not ../
 # 2.clean-data/code/clean_data.py
 df = pd.read_csv('2.clean-data/input-data/data.csv')  # ✓
 df.to_csv('2.clean-data/output/clean_data.csv', index=False)  # ✓
+
+# 4.build-paper-and-slides/code/build_paper_and_slides.py
+# ¹ This wrapper changes its own working directory to the step dir
+# so that \input{} paths in the .tex file resolve step-relatively.
+# The SCons action still runs from ROOT, but the wrapper does:
+#   os.chdir('4.build-paper-and-slides')
+# This keeps .tex paths clean (input-data/... not 4.build-paper-and-slides/input-data/...)
 ```
 
 ---
@@ -207,6 +241,7 @@ timestamps, and `gslab_python/gslab_scons/log.py` for the top-level build log):
 | Step 1 | `1.import-data/temp/Sconscript_import_data.log` | SConscript action |
 | Step 2 | `2.clean-data/temp/Sconscript_clean_data.log` | SConscript action |
 | Step 3 | `3.regression-analysis/temp/Sconscript_regression_analysis.log` | Stata `log using` in the `.do` file |
+| Step 4 | `4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log` | SConscript action (shell redirection) |
 | Top-level | `Sconstruct.log` (project root) | `SConstruct` (parse time + `atexit`) |
 
 **Naming convention:** `Sconscript_<step_name>.log`, where `<step_name>` is the
@@ -284,6 +319,48 @@ Stata runs from the project ROOT (inherited from the SCons action), so the
 `log using` path is root-relative. Stata also auto-creates a side-effect
 `regression_analysis.log` (from `-e do`) at the root — this is gitignored and
 harmless; the canonical log is the named `Sconscript_*.log`.
+
+### How the LaTeX step logs (Python wrapper + shell redirection)
+
+Step 4 uses the same shell-redirection pattern as Python steps 1–2, but
+the action invokes a Python wrapper script (`build_paper_and_slides.py`)
+instead of a data-processing script:
+
+```python
+# In 4.build-paper-and-slides/SConscript (action runs from project ROOT)
+LOG = '4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log'
+cmd = env.Command(
+    target='output/paper.pdf',
+    source=['code/paper.tex', 'code/build_paper_and_slides.py', 'input-data/regression_results.tex'],
+    action='python modules/scons_log.py start %s && '
+           'python 4.build-paper-and-slides/code/build_paper_and_slides.py >> %s 2>&1 && '
+           'python modules/scons_log.py end %s' % (LOG, LOG, LOG)
+)
+```
+
+**Key differences from Python data-processing steps:**
+
+1. **Working directory** — The wrapper calls `os.chdir('4.build-paper-and-slides')`
+   so that `\input{input-data/regression_results}` in `paper.tex` resolves
+   relative to the step directory (not the project root). This keeps `.tex`
+   paths clean and step-relative.
+
+2. **2-pass compilation** — The wrapper runs pdflatex twice:
+   - Pass 1: generates `.aux` (cross-reference data) and `.toc` (table of contents)
+   - Pass 2: reads `.aux` and `.toc` to resolve `\ref{}`, `\tableofcontents`, etc.
+
+3. **Windows path handling** — pdflatex on Windows rejects backslash paths.
+   The wrapper converts the output directory to forward slashes via
+   `output_dir.replace('\\', '/')`, matching the pattern from the `Scons-Test`
+   reference project.
+
+4. **Dependency tracking** — The `source` list includes `paper.tex`, the wrapper
+   script, AND `input-data/regression_results.tex`. This ensures the PDF is
+   rebuilt if the paper source, build logic, or upstream regression output changes.
+
+The `&&` chaining ensures that if pdflatex fails (non-zero exit), the
+`completed` timestamp is never written — a log with `created` but no
+`completed` signals a failed step.
 
 ### Top-level `Sconstruct.log`
 

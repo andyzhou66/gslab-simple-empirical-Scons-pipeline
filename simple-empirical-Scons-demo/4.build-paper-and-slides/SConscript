@@ -1,0 +1,24 @@
+import os
+
+Import('env')
+
+# Build rule for step 4: compile paper from LaTeX
+# The Python wrapper (build_paper_and_slides.py) handles 2-pass pdflatex
+# compilation with Windows path conversion and error checking.
+#
+# Action runs from the project ROOT (simple-empirical-Scons-demo/).
+# The wrapper changes to this step's directory before running pdflatex
+# so that \input{input-data/regression_results} in paper.tex resolves.
+#
+# Logging follows the pattern from steps 1-2:
+#   scons_log.py start  -> truncate log, write "created" timestamp
+#   python wrapper >> LOG 2>&1  -> redirect stdout/stderr
+#   scons_log.py end    -> append "completed" timestamp
+LOG = '4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log'
+cmd = env.Command(
+    target='output/paper.pdf',
+    source=['code/paper.tex', 'code/build_paper_and_slides.py', 'input-data/regression_results.tex'],
+    action='python modules/scons_log.py start %s && '
+           'python 4.build-paper-and-slides/code/build_paper_and_slides.py >> %s 2>&1 && '
+           'python modules/scons_log.py end %s' % (LOG, LOG, LOG)
+)

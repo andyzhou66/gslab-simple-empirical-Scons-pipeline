@@ -23,6 +23,7 @@ STEP_LOGS = [
     '1.import-data/temp/Sconscript_import_data.log',
     '2.clean-data/temp/Sconscript_clean_data.log',
     '3.regression-analysis/temp/Sconscript_regression_analysis.log',
+    '4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log',
 ]
 
 # Skip logging on dry runs (-n / --dry-run / --recon / --just-print), exactly
@@ -59,3 +60,6 @@ SConscript('2.clean-data/SConscript', exports='env')
 
 # # Step 3: Regression analysis (depends on step 2)
 SConscript('3.regression-analysis/SConscript', exports='env')
+
+# Step 4: Build paper and slides from LaTeX (depends on step 3)
+SConscript('4.build-paper-and-slides/SConscript', exports='env')

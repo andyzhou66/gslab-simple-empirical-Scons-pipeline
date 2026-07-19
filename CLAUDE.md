@@ -230,11 +230,13 @@ Restart VS Code, then you can pick this kernel in notebook kernel list.
 ## Project Conventions (simple-empirical-Scons-demo)
 
 - Folders: hyphen-case (`import-data`); Files: underscore_case (`import_data.py`)
-- Step folders: numeric prefix + dot (`1.import-data/`, `2.clean-data/`, `3.regression-analysis/`)
+- Step folders: numeric prefix + dot (`1.import-data/`, `2.clean-data/`, `3.regression-analysis/`, `4.build-paper-and-slides/`)
+- Step folder names should start with a **verb** describing the action (import, clean, build, etc.) followed by a noun/object. This makes each step's role immediately clear.
 - Build system: plain SCons `Command()`, not `gslab_scons` builders
 - Each step folder contains: `SConscript`, `code/`, `temp/` (logs)
 - Step 1 (`1.import-data`): also has `raw-data/` (downloaded CSVs)
-- Steps 2–3: also have `input-data/` (copied from prior step) and `output/` (produced files)
+- Steps 2–4: also have `input-data/` (copied from prior step) and `output/` (produced files)
+- Step 4 (`4.build-paper-and-slides`): LaTeX build — a Python wrapper (`build_paper_and_slides.py`) runs 2-pass pdflatex. The wrapper `chdir`s to the step directory so `\input{input-data/regression_results}` resolves step-relatively (no root-relative paths in `.tex`), and converts backslash paths to forward slashes (required by pdflatex on Windows). Logging uses the same `modules/scons_log.py start/end` shell-redirection pattern as steps 1–2.
 
 ### SCons Pattern: `env.Install()` for Inter-Step Data Flows
 
@@ -344,6 +346,32 @@ log close
 ```
 Stata's auto side-effect `<doname>.log` (from `-e do`) is gitignored and
 harmless; the canonical log is the named `Sconscript_*.log`.
+
+**LaTeX step** — uses the same shell-redirection pattern as Python steps (not
+Stata's `log using`), but invokes a Python wrapper instead of a data script:
+
+```python
+# In 4.build-paper-and-slides/SConscript
+LOG = '4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log'
+env.Command(
+    target='output/paper.pdf',
+    source=['code/paper.tex', 'code/build_paper_and_slides.py',
+            'input-data/regression_results.tex'],
+    action='python modules/scons_log.py start %s && '
+           'python 4.build-paper-and-slides/code/build_paper_and_slides.py '
+           '>> %s 2>&1 && '
+           'python modules/scons_log.py end %s' % (LOG, LOG, LOG)
+)
+```
+
+Key details:
+- The wrapper `os.chdir`s to `4.build-paper-and-slides/` so `\input{}` paths
+  resolve step-relatively (no root-relative paths in the `.tex` file).
+- Converts output-dir backslashes to forward slashes (pdflatex on Windows
+  rejects backslash paths), matching the `Scons-Test` pattern.
+- Runs pdflatex twice (pass 1 → `.aux`/`.toc`, pass 2 → resolved refs/TOC).
+- `source` includes `input-data/regression_results.tex` so the PDF is rebuilt
+  when the upstream regression output changes.
 
 **`Sconstruct.log`** — `SConstruct` calls `modules/scons_log.py` in-process at
 parse time: it prepends `modules/` to `sys.path` so a bare `import scons_log`

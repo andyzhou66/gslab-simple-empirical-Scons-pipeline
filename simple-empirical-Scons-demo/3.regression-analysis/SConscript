@@ -13,3 +13,6 @@ cmd = env.Command(
     source=['code/regression_analysis.do', 'input-data/clean_data.csv'],
     action='StataSE-64 /e do 3.regression-analysis/code/regression_analysis.do'
 )
+
+# Install regression output to step 4's input
+env.Install('../4.build-paper-and-slides/input-data', 'output/regression_results.tex')
