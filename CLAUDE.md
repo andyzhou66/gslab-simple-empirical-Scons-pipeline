@@ -202,6 +202,31 @@ The `gslab_python/` directory is a git repo pointed at **your fork**:
 - **Stata:** StataNow19 installed at `/g/StataNow19/StataSE-64.exe`. Use `-e do` syntax (not `/e do`) for command-line execution. Example: `StataSE-64 -e do script.do`
 - **Jupyter Notebooks:** Use `nbautoexport` to auto-export notebooks to Python `.py` files for cleaner git diffs and version control. Install: `pip install nbautoexport`. Configure in JupyterLab (Settings → Notebook → Auto Export) or via `.jupyterlab-settings/notebook.json`. Exported `.py` files track notebook logic while the `.ipynb` remains readable in Jupyter.
 
+### Running Jupyter Notebook with Venv in VS Code
+
+1. **Prerequisites:** Install VS Code extension: Jupyter (official Microsoft extension)
+2. **Activate venv:** `.env\Scripts\activate` (Windows) or `source .env/bin/activate` (Mac/Linux)
+3. **Install packages in venv:**
+   ```bash
+   pip install ipykernel jupyter notebook
+   ```
+4. **Select Python interpreter in VS Code:**
+   - Press `Ctrl + Shift + P` (Windows/Linux) / `Cmd + Shift + P` (Mac)
+   - Search: `Python: Select Interpreter`
+   - Pick the python binary inside `.env\Scripts\python.exe` (Windows) or `.env/bin/python` (Mac/Linux)
+5. **Create or open `.ipynb` notebook file:**
+   - VS Code auto-detects the selected venv as the notebook kernel
+   - If wrong kernel loads: Click kernel name (top right) → Select another kernel → Choose your `.env` kernel
+
+### How to manually register kernel (if VS Code cannot find env)
+
+Run this command inside activated virtual env:
+```bash
+python -m ipykernel install --user --name gslab_env --display-name "GSLab Virtual Env"
+```
+
+Restart VS Code, then you can pick this kernel in notebook kernel list.
+
 ## Project Conventions (simple-empirical-Scons-demo)
 
 - Folders: hyphen-case (`import-data`); Files: underscore_case (`import_data.py`)

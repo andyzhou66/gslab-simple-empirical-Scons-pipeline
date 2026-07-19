@@ -291,3 +291,43 @@ StataSE-64 -e do path/to/script.do
 ```
 
 **Note:** The gslab_python builder specifies `/e do` for Windows, but StataNow19 requires `-e do` (hyphen, not forward slash).
+
+---
+
+## Development Setup
+
+### Running Jupyter Notebook with Venv in VS Code
+
+1. **Prerequisites:** Install VS Code extension: Jupyter (official Microsoft extension)
+
+2. **Activate venv:**
+   ```bash
+   # Windows
+   .venv\Scripts\activate
+   
+   # Mac / Linux
+   source .venv/bin/activate
+   ```
+
+3. **Install packages in venv:**
+   ```bash
+   pip install ipykernel jupyter notebook
+   ```
+
+4. **Select Python interpreter in VS Code:**
+   - Press `Ctrl + Shift + P` (Windows/Linux) / `Cmd + Shift + P` (Mac)
+   - Search: `Python: Select Interpreter`
+   - Pick the python binary inside `.venv\Scripts\python.exe` (Windows) or `.venv/bin/python` (Mac/Linux)
+
+5. **Create or open `.ipynb` notebook file:**
+   - VS Code auto-detects the selected venv as the notebook kernel
+   - If wrong kernel loads: Click kernel name (top right) → Select another kernel → Choose your venv kernel
+
+### How to manually register kernel (if VS Code cannot find env)
+
+Run this command inside activated virtual env:
+```bash
+python -m ipykernel install --user --name scons_demo_env --display-name "SCons Demo Virtual Env"
+```
+
+Restart VS Code, then you can pick this kernel in notebook kernel list.
