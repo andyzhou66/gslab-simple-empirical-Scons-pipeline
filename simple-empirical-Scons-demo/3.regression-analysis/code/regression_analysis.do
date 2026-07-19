@@ -9,7 +9,7 @@ Creation Date:    19 Jul 2026
 Modification Date:
 Do-file version:    01
 References:        OLS regression on cleaned data
-Output:            regression_results.txt, regression_output.dta
+Output:            regression_results.tex, regression_output.dta
 ==================================================*/
 
 /*==================================================
@@ -57,11 +57,14 @@ eststo result1
 /*==================================================
               3: Save results
 ==================================================*/
-* Export regression table to text file (relative to project root)
-esttab result1 using 3.regression-analysis/output/regression_results.txt, replace ///
+* Export regression table to LaTeX file (relative to project root)
+* The `tex` option wraps the table in a tabular environment, intended to be
+* \input{} from a LaTeX document.
+esttab result1 using 3.regression-analysis/output/regression_results.tex, replace ///
 	cells(b(star fmt(3)) se(par fmt(3))) ///
 	stats(N r2, fmt(0 3)) ///
-	label title("OLS Regression: y on x")
+	label title("OLS Regression: y on x") ///
+	tex
 
 * Save regression output dataset (relative to project root)
 save 3.regression-analysis/output/regression_output.dta, replace

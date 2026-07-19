@@ -68,7 +68,7 @@ simple-empirical-Scons-demo/
     ├── code/
     │   └── regression_analysis.do      ← Stata regression script
     ├── input-data/                     ← copied from 2.clean-data/output/
-    ├── output/                         ← results.txt and tables land here
+    ├── output/                         ← regression_results.tex and tables land here
     └── temp/                           ← logs for this step
 ```
 
@@ -93,7 +93,7 @@ simple-empirical-Scons-demo/
 |------|--------|----------|-------|--------|
 | 1 | `1.import-data` | Python | online source | `raw-data/*.csv` |
 | 2 | `2.clean-data` | Python | `input-data/` (from step 1 raw-data) | `output/*.csv` |
-| 3 | `3.regression-analysis` | Stata | `input-data/` (from step 2 output) | `output/results.txt` |
+| 3 | `3.regression-analysis` | Stata | `input-data/` (from step 2 output) | `output/regression_results.tex` |
 
 ---
 
@@ -120,7 +120,7 @@ cmd = env.Command(
 |---|---|---|
 | `1.import-data/code/import_data.py` | Root | `'1.import-data/raw-data/data.csv'`, `'.env'` |
 | `2.clean-data/code/clean_data.py` | Root | `'2.clean-data/input-data/data.csv'`, `'2.clean-data/output/clean_data.csv'` |
-| `3.regression-analysis/code/regression_analysis.do` | Root | `'3.regression-analysis/input-data/clean_data.csv'`, `'3.regression-analysis/output/regression_results.txt'` |
+| `3.regression-analysis/code/regression_analysis.do` | Root | `'3.regression-analysis/input-data/clean_data.csv'`, `'3.regression-analysis/output/regression_results.tex'` |
 
 **Code Examples:**
 ```python
@@ -434,7 +434,7 @@ If running Stata scripts directly (outside SCons), use the `-e do` syntax:
 StataSE-64 -e do path/to/script.do
 ```
 
-**Note:** The gslab_python builder specifies `/e do` for Windows, but StataNow19 requires `-e do` (hyphen, not forward slash).
+**Note:** The demo's SConscript uses `StataSE-64 /e do script.do`. Both `-e` and `/e` reach Stata correctly when spawned via cmd.exe (which is how SCons runs actions), so `/e` works in SCons. **Caveat:** do NOT type `StataSE-64 /e do ...` directly in Git Bash / MSYS — MSYS auto-translates the leading `/e` into a Windows path (`E:/`), so Stata never receives the batch flag and silently does nothing. For direct terminal use in Git Bash, use `-e do` (or prefix `MSYS_NO_PATHCONV=1`). Verified 2026-07-19.
 
 **Do-File Template:** When creating `.do` files, use `dotemplatedo.do` as a template for consistent structure, metadata headers, and section organization.
 

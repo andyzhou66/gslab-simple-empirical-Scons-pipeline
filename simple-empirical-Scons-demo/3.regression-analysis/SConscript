@@ -3,11 +3,13 @@ import os
 Import('env')
 
 # Build rule for step 3: regression analysis (Stata)
-# StataSE-64 -e do syntax (not /e do)
+# StataSE-64 /e do batch syntax. /e works here because SCons spawns cmd.exe
+# (bypassing MSYS). Do NOT type `/e do` directly in Git Bash — MSYS translates
+# /e to E:/ and Stata silently skips the batch run; use `-e do` there instead.
 # Logging is handled inside the .do file via Stata's inherent `log using`
 # command -> 3.regression-analysis/temp/Sconscript_regression_analysis.log
 cmd = env.Command(
-    target='output/regression_results.txt',
+    target='output/regression_results.tex',
     source=['code/regression_analysis.do', 'input-data/clean_data.csv'],
-    action='StataSE-64 -e do 3.regression-analysis/code/regression_analysis.do'
+    action='StataSE-64 /e do 3.regression-analysis/code/regression_analysis.do'
 )
