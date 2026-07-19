@@ -17,7 +17,8 @@ Import('env')
 LOG = '4.build-paper-and-slides/temp/Sconscript_build_paper_and_slides.log'
 cmd = env.Command(
     target='output/paper.pdf',
-    source=['code/paper.tex', 'code/build_paper_and_slides.py', 'input-data/regression_results.tex'],
+    source=['code/paper.tex', 'code/build_paper_and_slides.py',
+            'input-data/regression_results.tex', 'input-data/regression_macros.tex'],
     action='python modules/scons_log.py start %s && '
            'python 4.build-paper-and-slides/code/build_paper_and_slides.py >> %s 2>&1 && '
            'python modules/scons_log.py end %s' % (LOG, LOG, LOG)

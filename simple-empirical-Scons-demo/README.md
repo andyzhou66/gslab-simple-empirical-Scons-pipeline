@@ -118,7 +118,7 @@ simple-empirical-Scons-demo/
 |------|--------|----------|-------|--------|
 | 1 | `1.import-data` | Python | online source | `raw-data/*.csv` |
 | 2 | `2.clean-data` | Python | `input-data/` (from step 1 raw-data) | `output/*.csv` |
-| 3 | `3.regression-analysis` | Stata | `input-data/` (from step 2 output) | `output/regression_results.tex` |
+| 3 | `3.regression-analysis` | Stata | `input-data/` (from step 2 output) | `output/regression_results.tex`, `output/regression_macros.tex` |
 | 4 | `4.build-paper-and-slides` | LaTeX (Python wrapper) | `input-data/` (from step 3 output) + `code/paper.tex` | `output/paper.pdf` |
 
 ---
@@ -361,6 +361,89 @@ cmd = env.Command(
 The `&&` chaining ensures that if pdflatex fails (non-zero exit), the
 `completed` timestamp is never written — a log with `created` but no
 `completed` signals a failed step.
+
+### Stata → LaTeX Macro Workflow
+
+Besides the full regression table via `esttab`, the pipeline also
+demonstrates writing individual statistics as **LaTeX macros** that can
+be used inline in the paper text. This keeps numbers in the prose
+automatically in sync with the estimation output — no manual copy-paste.
+
+**How it works:**
+
+1. **Stata** extracts scalars from `e()` and `_b[]` / `_se[]` after
+   `regress`, formats them with `display`, and writes `\newcommand`
+   definitions to `output/regression_macros.tex`.
+
+2. **SCons** tracks this file as a second target of the
+   `env.Command()` (alongside `regression_results.tex`) and installs it
+   into step 4's `input-data/`.
+
+3. **LaTeX** `\input{}`s the macros file at the top of the document and
+   uses the macros inline: `$\hat{\beta} = \coeffX$`, `$N = \obsN$`, etc.
+
+**Stata code (manual approach used in this demo):**
+
+```stata
+* Format numbers with display — Stata's file write doesn't support
+* C-style %fmt specifiers, so pre-format into local macros.
+local b_x_s    : display %9.3f _b[x]
+local se_x_s   : display %9.3f _se[x]
+local b_cons_s : display %9.3f _b[_cons]
+local N_obs_s  : display %9.0f e(N)
+local r2_val_s : display %9.4f e(r2)
+
+file open myfile using "output/regression_macros.tex", write replace text
+file write myfile "\newcommand{\coeffX}{`b_x_s'}" _n
+file write myfile "\newcommand{\seX}{`se_x_s'}" _n
+file write myfile "\newcommand{\coeffConst}{`b_cons_s'}" _n
+file write myfile "\newcommand{\obsN}{`N_obs_s'}" _n
+file write myfile "\newcommand{\rsq}{`r2_val_s'}" _n
+file close myfile
+```
+
+**Alternative: `texresults2` package (recommended for larger projects)**
+
+The `texresults2` package (SSC) simplifies this workflow — it handles
+formatting and `\newcommand` output without manual `file open`/`file write`
+boilerplate. Install once with `ssc install texresults2`.
+
+```stata
+* After estimation:
+texresults2 using "output/regression_macros.tex", texmacro(coeffX) ///
+    coef(x) round(3) replace
+texresults2 using "output/regression_macros.tex", texmacro(seX) ///
+    se(x) round(3) append
+texresults2 using "output/regression_macros.tex", texmacro(coeffConst) ///
+    coef(_cons) round(3) append
+texresults2 using "output/regression_macros.tex", texmacro(obsN) ///
+    result(e(N)) round(0) append
+texresults2 using "output/regression_macros.tex", texmacro(rsq) ///
+    result(e(r2)) round(4) append
+```
+
+`texresults2` supports: `coef(varname)`, `se(varname)`, `tstat(varname)`,
+`pvalue(varname)`, `lb(varname)` / `ub(varname)` (CI bounds), and
+`result(e(...))` for arbitrary stored results. The first call uses
+`replace`; subsequent calls use `append`. The manual approach is kept in
+this demo to show the underlying mechanics without external dependencies.
+
+See: [texresults2 help file](http://fmwww.bc.edu/repec/bocode/t/texresults2.sthlp)
+
+**LaTeX usage:**
+
+```latex
+% At the top of the document:
+\input{input-data/regression_macros}
+
+% In the text:
+The coefficient on $x$ is $\hat{\beta} = \coeffX$
+(SE = $\seX$). The model explains $\rsq$ of the variation
+in $y$ ($N = \obsN$).
+```
+
+When the data changes and the pipeline re-runs, the paper text updates
+automatically — no manual numbers to update.
 
 ### Top-level `Sconstruct.log`
 

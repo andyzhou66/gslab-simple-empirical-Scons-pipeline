@@ -370,8 +370,37 @@ Key details:
 - Converts output-dir backslashes to forward slashes (pdflatex on Windows
   rejects backslash paths), matching the `Scons-Test` pattern.
 - Runs pdflatex twice (pass 1 → `.aux`/`.toc`, pass 2 → resolved refs/TOC).
-- `source` includes `input-data/regression_results.tex` so the PDF is rebuilt
-  when the upstream regression output changes.
+- `source` includes `input-data/regression_results.tex` and
+  `input-data/regression_macros.tex` so the PDF is rebuilt when upstream
+  outputs change.
+
+### Stata → LaTeX Macros
+
+Step 3 also writes inline LaTeX macros (`output/regression_macros.tex`) so
+that key statistics can be referenced in the paper text without manual
+copy-paste. After `regress`, Stata extracts `_b[]`, `_se[]`, `e(N)`, etc.,
+formats them via `display`, and writes `\newcommand` definitions via
+`file open`/`file write`. The macros are `\input{}` at the top of
+`paper.tex` and used inline: `$\hat{\beta} = \coeffX$`, `$N = \obsN$`, etc.
+
+For larger projects, the community-contributed `texresults2` package
+(`ssc install texresults2`) is a cleaner alternative — it replaces the manual
+`file` commands with a single-line syntax:
+
+```stata
+texresults2 using "output/regression_macros.tex", texmacro(coeffX) ///
+    coef(x) round(3) replace
+texresults2 using "output/regression_macros.tex", texmacro(seX) ///
+    se(x) round(3) append
+texresults2 using "output/regression_macros.tex", texmacro(obsN) ///
+    result(e(N)) round(0) append
+```
+
+`texresults2` supports `coef()`, `se()`, `tstat()`, `pvalue()`,
+`lb()`/`ub()` (CI bounds), and `result()` for arbitrary stored results. The
+first call uses `replace`; subsequent calls use `append`.
+
+See: [texresults2 help file](http://fmwww.bc.edu/repec/bocode/t/texresults2.sthlp)
 
 **`Sconstruct.log`** — `SConstruct` calls `modules/scons_log.py` in-process at
 parse time: it prepends `modules/` to `sys.path` so a bare `import scons_log`

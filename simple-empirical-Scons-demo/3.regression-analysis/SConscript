@@ -9,10 +9,11 @@ Import('env')
 # Logging is handled inside the .do file via Stata's inherent `log using`
 # command -> 3.regression-analysis/temp/Sconscript_regression_analysis.log
 cmd = env.Command(
-    target='output/regression_results.tex',
+    target=['output/regression_results.tex', 'output/regression_macros.tex'],
     source=['code/regression_analysis.do', 'input-data/clean_data.csv'],
     action='StataSE-64 /e do 3.regression-analysis/code/regression_analysis.do'
 )
 
-# Install regression output to step 4's input
+# Install regression outputs to step 4's input
 env.Install('../4.build-paper-and-slides/input-data', 'output/regression_results.tex')
+env.Install('../4.build-paper-and-slides/input-data', 'output/regression_macros.tex')
