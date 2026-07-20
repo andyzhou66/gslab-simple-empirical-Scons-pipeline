@@ -227,6 +227,29 @@ python -m ipykernel install --user --name gslab_env --display-name "GSLab Virtua
 
 Restart VS Code, then you can pick this kernel in notebook kernel list.
 
+### remember plugin — Windows fix (consolidation was silently broken)
+
+The `remember` plugin's background **consolidation** (compressing `today-*.md` staging files into `recent.md` / `archive.md`, triggered at SessionStart) was silently crashing on Windows. Symptom: `today-*.md` files accumulated but `recent.md` / `archive.md` never appeared. The per-session **extract** path worked because it runs in the foreground with a small prompt; only the detached background consolidation failed.
+
+Root cause: **three Windows-specific bugs in `pipeline/haiku.py`** (the wrapper that spawns `claude -p --model haiku` as a subprocess). These are **NOT GLM-related** — they fail identically under real Anthropic; GLM's `glm-4.7` haiku-tier model works fine (proven by successful extract calls in `.remember/logs/`).
+
+1. `subprocess.run(["claude", ...])` passes a bare name; `CreateProcess` in the detached SessionStart background process can't resolve `claude.CMD` → `FileNotFoundError [WinError 2]`. Fix: `shutil.which("claude")`.
+2. `text=True` decodes stdout as GBK on Chinese Windows → `UnicodeDecodeError` on UTF-8 output. Fix: `encoding="utf-8", errors="replace"`.
+3. `claude -p "<huge prompt>"` exceeds the Windows ~32 kB command-line cap → `The command line is too long.` Fix: pass the prompt via stdin (`input=prompt`, drop the `-p <prompt>` arg).
+
+**Patch:** `patches/haiku.py.windows-fix.patch` (unified diff, paths relative to the plugin cache root). The patch is applied live to the installed plugin at:
+```
+C:/Users/swufe/.claude/plugins/cache/claude-plugins-official/remember/<VERSION>/pipeline/haiku.py
+```
+This cache directory is **overwritten on plugin update/reinstall** — after any `remember` plugin upgrade, re-apply the patch from the plugin cache root:
+```bash
+cd "C:/Users/swufe/.claude/plugins/cache/claude-plugins-official/remember/<VERSION>"
+patch -p1 < "<project>/patches/haiku.py.windows-fix.patch"
+```
+Verified 2026-07-20: re-ran `run-consolidation.sh` manually → `recent.md` + `archive.md` generated for the first time, three `today-*.md` files marked `.done.md`.
+
+**Diagnostics if consolidation stops working again:** check `.remember/logs/memory-<DATE>.log` for `[consolidation] ERROR: pipeline failed —` lines; the traceback will name the failing `haiku.py` line. `FileNotFoundError`/`command line is too long` = patch was lost (re-apply); a different error = a new issue.
+
 ## Project Conventions (simple-empirical-Scons-demo)
 
 - Folders: hyphen-case (`import-data`); Files: underscore_case (`import_data.py`)
